@@ -1,25 +1,136 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "Dianne Dino"
+date: "May 7, 2019"
 output: 
   html_document:
     keep_md: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
+
+```{r, echo=FALSE}
+library(ggplot2)
+```
 ## Loading and preprocessing the data
 
 
+```{r, echo = TRUE}
+# read dataset file
+      
+      data <- read.csv("activity.csv", stringsAsFactors = TRUE)
 
-## What is mean total number of steps taken per day?
+# Compute the weekdays from the date attribute
+      data<- data.frame(date=data$date, 
+             weekday=tolower(weekdays(as.Date(data$date))), 
+             steps=data$steps, interval=data$interval)
 
+# Compute the day type (weekend or weekday)
 
+      data <- cbind(data, daytype=ifelse(data$weekday == "saturday" | 
+              data$weekday == "sunday", "weekend", "weekday"))
+
+# Create the final data.frame
+
+activity <- data.frame(date=data$date, 
+                       weekday=data$weekday, 
+                       daytype=data$daytype, 
+                       interval=data$interval,
+                       steps=data$steps)
+```
+
+## What is mean total number of steps taken per day
+
+```{r, echo = TRUE}
+# total steps taken per day
+
+      steps <- aggregate(activity$steps, by = list(activity$date), FUN = sum, na.rm = TRUE)
+      names(steps) <- c("Date", "Steps")
+      steps$Steps <- as.integer(steps$Steps)
+      
+#  histogram
+      
+      hist(steps$Steps, breaks = seq(from=0, to=25000, by= 2500),
+           ylim = c(0,20),
+           col = "red", main = "Histogram of Total Steps per Day", xlab = "Total Number of Steps (without NA)")
+# mean and median of total daily
+      
+      mean(steps$Steps)
+      median(steps$Steps)
+```
 
 ## What is the average daily activity pattern?
 
+```{r, echo = TRUE}
+# average steps per each interval
 
+      mean_int <- aggregate(activity$steps, by = list(activity$interval), FUN = mean, na.rm = TRUE)
+      names(mean_int) <- c("Interval", "AverageSteps")
+      
+# time series plot
+      
+      plot(mean_int$Interval, mean_int$AverageSteps, type = "l", col = "red")
+
+# calculating maximum average number of steps
+      
+      mean_calc <- which(mean_int$AverageSteps == max(mean_int$AverageSteps))
+      max_interval <- mean_int[mean_calc, 1]
+```
 
 ## Imputing missing values
 
+```{r, echo = TRUE}
+# total number of missing values (NA) in the dataset
+
+      na_total <- sum(is.na(activity$steps))
+
+# devise a strategy to fill all missing values
+
+      na <- which(is.na(activity$steps))
+      
+      mean_rep <- rep(mean(activity$steps, na.rm = TRUE), times = length(na))
+      
+      activity[na, "steps"] <- mean_rep
+      
+# histogram
+      
+      sum <- aggregate(activity$steps, by = list(activity$date), FUN = sum)
+      names(sum) <- c("Date", "Total")
+      
+      hist(sum$Total, breaks = seq(from=0, to=25000, by= 2500),
+           ylim = c(0,30),
+           col = "red", main = "Histogram of Total Steps per Day", 
+           xlab = "Total Number of Steps (NA replaced by mean)")
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo = TRUE}
+# subsetting daytype "weekday"
+
+      daytype_weekday <- subset(activity, daytype == "weekday")
+      agg_weekday <- aggregate(daytype_weekday$steps, by = list(daytype_weekday$interval), FUN = mean)
+      names(agg_weekday) <- c("Interval", "AveSteps")
+
+# subsetting daytype "weekend"
+      
+      daytype_weekend <- subset(activity, daytype == "weekend")      
+      agg_weekend <- aggregate(daytype_weekend$steps, by = list(daytype_weekend$interval), FUN = mean)      
+      names(agg_weekend) <- c("Interval", "AveSteps")
+      
+# make a panel plot containing a time series plot (type = "l") 
+      
+      par(mfrow = c(2,1), mar = c(4, 4, 2, 1))
+      
+      #weekday plot 
+      plot(agg_weekday$Interval, agg_weekday$AveSteps, type = "l", col = "red",
+           main = "Weekday", xlab = "Interval", ylab = "Number of Steps") 
+      #weekend plot    
+      plot(agg_weekend$Interval, agg_weekend$AveSteps, type = "l", col = "red",
+           main = "Weekend",  xlab = "Interval", ylab = "Number of Steps")
+            
+```
